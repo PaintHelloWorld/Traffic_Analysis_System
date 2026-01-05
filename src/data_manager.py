@@ -19,6 +19,90 @@ class TrafficDataManager:
         self.sort_column = None  # 当前排序列
         self.sort_ascending = True  # 排序方向
 
+    # 在 TrafficDataManager 类的 __init__ 方法后添加
+    EXPECTED_FIELDS = {
+        'required': ['事故时间', '所在区域', '事故类型', '受伤人数', '死亡人数'],
+        'optional': ['温度(℃)', '湿度(%)', '能见度(km)', '风速(m/s)', '事故等级', '道路名称', '天气情况', '道路类型',
+                     '照明条件']
+    }
+
+    def validate_csv_structure(self, df):
+        """验证CSV文件的结构是否符合预期
+
+        Args:
+            df: pandas DataFrame
+
+        Returns:
+            tuple: (是否有效, 错误信息)
+        """
+        if df is None or df.empty:
+            return False, "文件为空或无法读取"
+
+        # 获取实际列名
+        actual_columns = set(df.columns)
+
+        # 检查必需字段
+        missing_required = []
+        for field in self.EXPECTED_FIELDS['required']:
+            if field not in actual_columns:
+                missing_required.append(field)
+
+        # 检查是否有足够的字段（至少有部分必需字段）
+        if len(missing_required) == len(self.EXPECTED_FIELDS['required']):
+            # 尝试匹配相似的列名（大小写不敏感）
+            column_lower_map = {col.lower().replace(' ', '').replace('(', '').replace(')', ''): col
+                                for col in df.columns}
+
+            # 相似性匹配
+            field_mapping = {}
+            for expected in self.EXPECTED_FIELDS['required']:
+                expected_simple = expected.lower().replace(' ', '').replace('(', '').replace(')', '')
+                if expected_simple in column_lower_map:
+                    field_mapping[expected] = column_lower_map[expected_simple]
+
+            if field_mapping:
+                return True, f"检测到相似字段: {field_mapping}"
+            else:
+                return False, "文件格式不匹配：未找到必需字段"
+
+        # 部分必需字段缺失
+        if missing_required:
+            error_msg = "文件格式不匹配：缺少以下必需字段:\n"
+            error_msg += "\n".join(f"  • {field}" for field in missing_required)
+            error_msg += f"\n\n当前文件包含的字段:\n"
+            error_msg += "\n".join(f"  • {col}" for col in sorted(df.columns))
+            return False, error_msg
+
+        # 验证数据类型
+        data_issues = []
+
+        # 检查数值字段
+        numerical_fields = ['受伤人数', '死亡人数', '温度(℃)', '湿度(%)', '能见度(km)', '风速(m/s)']
+        for field in numerical_fields:
+            if field in df.columns:
+                try:
+                    # 尝试转换为数值
+                    pd.to_numeric(df[field], errors='raise')
+                except:
+                    data_issues.append(f"字段 '{field}' 包含非数值数据")
+
+        # 检查时间字段
+        time_fields = ['事故时间']
+        for field in time_fields:
+            if field in df.columns:
+                try:
+                    pd.to_datetime(df[field], errors='raise')
+                except:
+                    data_issues.append(f"字段 '{field}' 不是有效的时间格式")
+
+        if data_issues:
+            warning_msg = "数据格式警告:\n"
+            warning_msg += "\n".join(f"  • {issue}" for issue in data_issues)
+            warning_msg += "\n\n是否继续导入？"
+            return True, warning_msg  # 警告但允许继续
+
+        return True, "文件格式验证通过"
+
     # ==================== 基础数据操作 ====================
 
     def load_csv(self, filepath):
@@ -27,22 +111,68 @@ class TrafficDataManager:
             # 1. 读取CSV文件
             self.raw_data = pd.read_csv(filepath, encoding='utf-8')
 
-            # 2. 自动识别和转换数据类型
+            # 2. 验证文件格式
+            is_valid, validation_msg = self.validate_csv_structure(self.raw_data)
+
+            if not is_valid:
+                # 格式严重不匹配，不允许导入
+                self.raw_data = None
+                return False, validation_msg
+
+            # 3. 如果是警告信息，需要用户确认
+            if "警告" in validation_msg:
+                # 这里需要在UI层显示确认对话框
+                # 暂时记录为需要用户确认
+                self.validation_warning = validation_msg
+            else:
+                self.validation_warning = None
+
+            # 4. 自动识别和转换数据类型
             self.auto_detect_types()
 
-            # 3. 设置显示数据（初始为原始数据副本）
+            # 5. 设置显示数据（初始为原始数据副本）
             self.display_data = self.raw_data.copy()
             self.current_file = filepath
 
-            # 4. 重置筛选和排序状态
+            # 6. 重置筛选和排序状态
             self.filters = {}
             self.sort_column = None
             self.sort_ascending = True
 
-            return True, f"成功加载 {len(self.raw_data)} 条记录，{len(self.raw_data.columns)} 个字段"
+            # 7. 如果有警告信息，包含在返回消息中
+            success_msg = f"成功加载 {len(self.raw_data)} 条记录，{len(self.raw_data.columns)} 个字段"
+            if self.validation_warning:
+                success_msg += f"\n\n警告：{self.validation_warning}"
+
+            return True, success_msg
+
+        except UnicodeDecodeError:
+            # 尝试其他编码
+            try:
+                self.raw_data = pd.read_csv(filepath, encoding='gbk')
+
+                # 验证文件格式
+                is_valid, validation_msg = self.validate_csv_structure(self.raw_data)
+
+                if not is_valid:
+                    self.raw_data = None
+                    return False, validation_msg
+
+                # 继续处理...
+                self.auto_detect_types()
+                self.display_data = self.raw_data.copy()
+                self.current_file = filepath
+                self.filters = {}
+                self.sort_column = None
+                self.sort_ascending = True
+
+                return True, f"成功加载 {len(self.raw_data)} 条记录（使用GBK编码），{len(self.raw_data.columns)} 个字段"
+
+            except Exception as e2:
+                return False, f"加载失败: 无法识别的文件编码或格式\n错误详情: {e2}"
 
         except Exception as e:
-            return False, f"加载失败: {e}"
+            return False, f"加载失败: {str(e)}"
 
     def auto_detect_types(self):
         """自动识别和转换数据类型"""

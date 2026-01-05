@@ -165,6 +165,10 @@ class ControlPanel(ttk.LabelFrame):
             self.filter_column.current(0)
             self.sort_column.current(0)
 
+    # 修改 ui_components.py 的 open_csv 函数
+
+    # ui_components.py - 修改 open_csv 函数
+
     def open_csv(self):
         """打开CSV文件"""
         filepath = filedialog.askopenfilename(
@@ -174,9 +178,52 @@ class ControlPanel(ttk.LabelFrame):
 
         if filepath:
             success, message = self.data_manager.load_csv(filepath)
+
             if success:
+                # 检查是否有警告信息
+                if hasattr(self.data_manager, 'validation_warning') and self.data_manager.validation_warning:
+                    # 显示警告对话框，让用户选择是否继续
+                    response = messagebox.askyesno(
+                        "数据格式警告",
+                        f"{self.data_manager.validation_warning}\n\n是否继续导入？"
+                    )
+
+                    if not response:
+                        # 用户选择不继续，重置数据管理器
+                        self.data_manager.raw_data = None
+                        self.data_manager.display_data = None
+                        self.data_manager.current_file = None
+                        self.status_callback("导入已取消")
+                        return
+
+                # ============ 新增：数据量检查 ============
+                data_size = len(self.data_manager.display_data)
+                if data_size > 100:
+                    response = messagebox.askyesno(
+                        "数据量警告",
+                        f"加载了 {data_size} 条数据。\n\n"
+                        f"数据量超过100条，使用可视化功能可能导致程序卡顿\n"
+                        f"是否继续导入？"
+                    )
+
+                    if not response:
+                        # 用户选择不继续，重置数据管理器
+                        self.data_manager.raw_data = None
+                        self.data_manager.display_data = None
+                        self.data_manager.current_file = None
+                        self.status_callback("导入已取消")
+                        return
+                # ============ 新增结束 ============
+
                 self.refresh_table()
                 self.update_column_options()
+            else:
+                # 显示错误消息框
+                messagebox.showerror(
+                    "文件格式错误",
+                    f"无法导入文件:\n\n{message}"
+                )
+
             self.status_callback(message)
 
     def save_csv(self):
@@ -480,6 +527,29 @@ class IntegratedMainWindow:
             tab_text = self.notebook.tab(current_tab_index, "text")
 
             if tab_text == "📈 可视化分析":
+                # ============ 新增：数据量检查 ============
+                if hasattr(self, 'data_manager') and self.data_manager.display_data is not None:
+                    data_size = len(self.data_manager.display_data)
+                    if data_size > 100:
+                        # 显示警告消息框，使用 askokcancel 提供选择
+                        response = messagebox.askokcancel(
+                            "数据量警告",
+                            f"当前数据有 {data_size} 条记录。\n\n"
+                            f"⚠️ 数据量超过100条，使用可视化功能可能导致程序卡顿。\n\n"
+                            f"【确定】继续使用可视化分析\n"
+                            f"【取消】返回数据管理页面进行筛选"
+                        )
+
+                        # 如果用户点击取消，切换到数据管理选项卡
+                        if not response:  # 用户点击了取消
+                            # 查找数据管理选项卡
+                            for i in range(self.notebook.index("end")):
+                                if self.notebook.tab(i, "text") == "📊 数据管理":
+                                    self.notebook.select(i)
+                                    self.update_status(f"已返回数据管理页面 (数据量: {data_size} 条)")
+                                    return
+                # ============ 新增结束 ============
+
                 # 切换到可视化选项卡
                 if hasattr(self, 'visualizer') and self.visualizer:
                     # 延迟一点时间，确保界面完全加载
@@ -863,7 +933,7 @@ class IntegratedMainWindow:
 --------
 如需技术支持或反馈建议，请联系系统管理员lfw。
 Github仓库地址：https://github.com/PaintHelloWorld/Traffic_Analysis_System
-© 2026 交通数据分析项目 - 版本 1.2.0
+© 2026 交通数据分析项目 - 版本 1.2.1
         """
 
         help_text.insert(1.0, help_content)
@@ -1139,6 +1209,9 @@ Github仓库地址：https://github.com/PaintHelloWorld/Traffic_Analysis_System
                 tk.messagebox.showinfo("保存成功", "模型保存成功")
             else:
                 tk.messagebox.showerror("保存失败", message)
+
+
+
 
 
 # ==================== 测试函数 ====================
