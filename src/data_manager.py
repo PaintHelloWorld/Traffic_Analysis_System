@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore')
 
 
 class TrafficDataManager:
-    """交通事故数据管理器 - 负责所有数据相关操作"""
+    """交通事故数据管理器"""
 
     def __init__(self):
         """初始化数据管理器"""
@@ -28,7 +28,7 @@ class TrafficDataManager:
             self.raw_data = pd.read_csv(filepath, encoding='utf-8')
 
             # 2. 自动识别和转换数据类型
-            self._auto_detect_types()
+            self.auto_detect_types()
 
             # 3. 设置显示数据（初始为原始数据副本）
             self.display_data = self.raw_data.copy()
@@ -41,12 +41,10 @@ class TrafficDataManager:
 
             return True, f"成功加载 {len(self.raw_data)} 条记录，{len(self.raw_data.columns)} 个字段"
 
-        except FileNotFoundError:
-            return False, f"文件不存在: {filepath}"
         except Exception as e:
             return False, f"加载失败: {e}"
 
-    def _auto_detect_types(self):
+    def auto_detect_types(self):
         """自动识别和转换数据类型"""
         if self.raw_data is None:
             return
@@ -339,21 +337,40 @@ class TrafficDataManager:
         except Exception as e:
             return False, f"更新记录失败: {str(e)}"
 
-    # ==================== 数据导出功能 ====================
-
+    # 在 TrafficDataManager 类中添加：
     def export_to_excel(self, filepath):
-        """导出数据到Excel"""
+        """导出数据到Excel文件"""
         if self.display_data is None:
             return False, "没有可导出的数据"
 
         try:
-            self.display_data.to_excel(filepath, index=False)
-            return True, f"数据已导出到: {filepath}"
+            # 使用ExcelWriter支持多个sheet
+            with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+                # 导出主要数据
+                self.display_data.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name='事故数据'
+                )
 
+                # 可选：导出统计信息
+                stats = self.get_basic_stats()
+                if stats:
+                    stats_df = pd.DataFrame(stats['column_details'])
+                    stats_df.to_excel(
+                        writer,
+                        index=False,
+                        sheet_name='数据统计'
+                    )
+
+            return True, f"数据已成功导出到: {filepath}"
+        except ImportError:
+            return False, "导出Excel需要安装openpyxl库，请运行: pip install openpyxl"
         except Exception as e:
             return False, f"导出失败: {str(e)}"
 
     # ==================== 示例数据生成 ====================
+    # TODO: 让生成的数据变得更合理
 
     def generate_sample_data(self, n=100):
         """生成示例数据（用于测试）"""
@@ -364,23 +381,172 @@ class TrafficDataManager:
         start_date = end_date - timedelta(days=365)
         date_range = pd.date_range(start=start_date, end=end_date, periods=n)
 
-        # 生成交通事故数据
-        sample_data = {
+        # 基础变量
+        regions = ['朝阳区', '海淀区', '东城区', '西城区', '丰台区']
+        road_names = ['长安街', '三环路', '四环路', '中关村大街', '王府井大街']
+        accident_types = ['追尾', '侧碰', '刮擦', '单车事故', '多车连环']
+        weather_conditions = ['晴天', '雨天', '阴天', '雾天', '雪天']
+        road_types = ['高速公路', '城市主干道', '城市次干道', '支路']
+        lighting_conditions = ['白天', '夜间有照明', '夜间无照明']
+
+        # 初始化数据容器
+        data_dict = {
             '事故ID': range(1, n + 1),
             '事故时间': np.random.choice(date_range, n),
-            '所在区域': np.random.choice(['朝阳区', '海淀区', '东城区', '西城区', '丰台区'], n),
-            '道路名称': np.random.choice(['长安街', '三环路', '四环路', '中关村大街', '王府井大街'], n),
-            '事故类型': np.random.choice(['追尾', '侧碰', '刮擦', '单车事故', '多车连环'], n),
-            '天气情况': np.random.choice(['晴天', '雨天', '阴天', '雾天', '雪天'], n),
-            '道路类型': np.random.choice(['高速公路', '城市主干道', '城市次干道', '支路'], n),
-            '照明条件': np.random.choice(['白天', '夜间有照明', '夜间无照明'], n),
-            '受伤人数': np.random.randint(0, 3, n),
-            '死亡人数': np.random.randint(0, 2, n),
-            '温度(℃)': np.random.uniform(-5, 35, n).round(1),
-            '湿度(%)': np.random.uniform(30, 95, n).round(0),
-            '能见度(km)': np.random.uniform(0.5, 20, n).round(1),
-            '风速(m/s)': np.random.uniform(0, 15, n).round(1),
-            '事故等级': np.random.choice(['轻微', '一般', '严重'], n, p=[0.6, 0.3, 0.1])
+            '所在区域': np.random.choice(regions, n),
+            '道路名称': np.random.choice(road_names, n),
+            '事故类型': np.random.choice(accident_types, n),
+            '天气情况': np.random.choice(weather_conditions, n),
+            '道路类型': np.random.choice(road_types, n),
+            '照明条件': np.random.choice(lighting_conditions, n),
+        }
+
+        # 生成气象数据 - 加强相关性
+        temperature = np.random.uniform(-5, 35, n).round(1)
+
+        # 温度与湿度的负相关（但加入噪声）
+        humidity_base = 75 - 0.7 * temperature + np.random.normal(0, 8, n)
+        humidity = np.clip(humidity_base.round(0), 30, 95)
+
+        # 能见度与天气的强相关
+        visibility = np.zeros(n)
+        for i in range(n):
+            base_vis = float(np.random.uniform(1, 20))  # 明确转换为float
+            if data_dict['天气情况'][i] == '雾天':
+                base_vis *= float(np.random.uniform(0.1, 0.4))  # 雾天能见度极低
+            elif data_dict['天气情况'][i] == '雪天':
+                base_vis *= float(np.random.uniform(0.2, 0.6))
+            elif data_dict['天气情况'][i] == '雨天':
+                base_vis *= float(np.random.uniform(0.4, 0.8))
+            elif data_dict['天气情况'][i] == '阴天':
+                base_vis *= float(np.random.uniform(0.6, 0.9))
+            visibility[i] = np.clip(round(base_vis, 1), 0.1, 20)  # 使用Python内置的round函数
+
+        # 风速与天气相关
+        wind_speed = np.zeros(n)
+        for i in range(n):
+            base_wind = float(np.random.uniform(0, 12))
+            if data_dict['天气情况'][i] in ['雨天', '雪天']:
+                base_wind *= float(np.random.uniform(1.3, 2.0))
+            elif data_dict['天气情况'][i] == '雾天':
+                base_wind *= float(np.random.uniform(0.8, 1.2))  # 雾天风速通常不大
+            wind_speed[i] = np.clip(round(base_wind, 1), 0, 20)
+
+        # 生成伤亡数据 - 建立更清晰的关联
+        injured = np.zeros(n, dtype=int)
+        deaths = np.zeros(n, dtype=int)
+
+        for i in range(n):
+            # 基础风险分数 - 更强调关键因素
+            risk_score = 0
+
+            # 1. 天气影响（权重最高）
+            if data_dict['天气情况'][i] in ['雾天', '雪天']:
+                risk_score += float(np.random.uniform(0.4, 0.7))
+            elif data_dict['天气情况'][i] == '雨天':
+                risk_score += float(np.random.uniform(0.2, 0.4))
+
+            # 2. 照明条件（权重高）
+            if data_dict['照明条件'][i] == '夜间无照明':
+                risk_score += float(np.random.uniform(0.3, 0.6))
+
+            # 3. 道路类型（权重中）
+            if data_dict['道路类型'][i] == '高速公路':
+                risk_score += float(np.random.uniform(0.3, 0.5))
+            elif data_dict['道路类型'][i] == '城市主干道':
+                risk_score += float(np.random.uniform(0.1, 0.3))
+
+            # 4. 能见度影响（非线性，但关系更清晰）
+            if visibility[i] < 0.5:
+                risk_score += float(np.random.uniform(0.5, 0.7))
+            elif visibility[i] < 2:
+                risk_score += float(np.random.uniform(0.3, 0.5))
+            elif visibility[i] < 5:
+                risk_score += float(np.random.uniform(0.1, 0.3))
+
+            # 5. 风速影响（中等）
+            if wind_speed[i] > 10:
+                risk_score += float(np.random.uniform(0.3, 0.5))
+            elif wind_speed[i] > 5:
+                risk_score += float(np.random.uniform(0.1, 0.2))
+
+            # 6. 事故类型影响
+            if data_dict['事故类型'][i] in ['多车连环', '侧碰']:
+                risk_score += float(np.random.uniform(0.2, 0.4))
+            elif data_dict['事故类型'][i] == '追尾':
+                risk_score += float(np.random.uniform(0.1, 0.3))
+
+            # 添加随机噪声（但减少噪声幅度）
+            risk_score += float(np.random.normal(0, 0.1))
+            risk_score = max(0, min(1, risk_score))  # 限制在0-1之间
+
+            # 根据风险分数生成伤亡数据（关系更明确）
+            if risk_score > 0.7:  # 高风险
+                # 死亡概率高
+                death_prob = np.random.random()
+                if death_prob > 0.6:
+                    deaths[i] = np.random.randint(1, 4)
+                    injured[i] = np.random.randint(deaths[i] + 1, deaths[i] + 5)
+                else:
+                    deaths[i] = np.random.randint(0, 2)
+                    injured[i] = np.random.randint(3, 7)
+
+            elif risk_score > 0.4:  # 中风险
+                # 可能有死亡，但概率较低
+                death_prob = np.random.random()
+                if death_prob > 0.8:
+                    deaths[i] = 1
+                    injured[i] = np.random.randint(2, 5)
+                else:
+                    deaths[i] = 0
+                    injured[i] = np.random.randint(1, 4)
+
+            else:  # 低风险
+                # 基本无死亡
+                deaths[i] = 0
+                injured_prob = np.random.random()
+                if injured_prob > 0.3:
+                    injured[i] = np.random.randint(0, 2)
+                else:
+                    injured[i] = 0
+
+            # 确保逻辑合理性
+            if deaths[i] > 0 and injured[i] < deaths[i]:
+                injured[i] = deaths[i] + np.random.randint(0, 3)
+
+        # 根据伤亡情况生成事故等级（关系更直接）
+        accident_level = []
+        for i in range(n):
+            total_severity = deaths[i] * 3 + injured[i]  # 死亡权重3倍
+
+            if deaths[i] >= 2 or total_severity >= 8:
+                level = '严重'
+            elif deaths[i] == 1 or total_severity >= 4:
+                level = '一般'
+            else:
+                level = '轻微'
+
+            # 10%的概率等级不完全匹配（减少异常比例）
+            if np.random.random() < 0.1:
+                if level == '严重' and np.random.random() < 0.5:
+                    level = '一般'
+                elif level == '一般' and np.random.random() < 0.5:
+                    level = '轻微' if np.random.random() < 0.5 else '严重'
+                elif level == '轻微' and np.random.random() < 0.5:
+                    level = '一般'
+
+            accident_level.append(level)
+
+        # 组合所有数据
+        sample_data = {
+            **data_dict,
+            '受伤人数': injured,
+            '死亡人数': deaths,
+            '温度(℃)': temperature,
+            '湿度(%)': humidity,
+            '能见度(km)': visibility,
+            '风速(m/s)': wind_speed,
+            '事故等级': accident_level
         }
 
         self.raw_data = pd.DataFrame(sample_data)

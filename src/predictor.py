@@ -25,15 +25,7 @@ class TrafficPredictor:
         self.is_trained = False
 
     def prepare_features(self, data):
-        """
-        准备特征数据
-
-        Args:
-            data: DataFrame，原始数据
-
-        Returns:
-            DataFrame: 处理后的特征数据
-        """
+        """从原始数据提取特征"""
         df = data.copy()
 
         # 1. 提取时间特征（如果有时间列）
@@ -92,13 +84,7 @@ class TrafficPredictor:
 
     def create_target_variable(self, data):
         """
-        创建目标变量（风险等级）
-
-        Args:
-            data: DataFrame
-
-        Returns:
-            Series: 风险等级 (0:低风险, 1:中风险, 2:高风险)
+        创建目标变量（风险等级：0:低风险, 1:中风险, 2:高风险）
         """
         # 如果有事故等级列，使用它
         severity_cols = [col for col in data.columns if any(kw in col.lower()
@@ -139,17 +125,11 @@ class TrafficPredictor:
     def train_model(self, data):
         """
         训练预测模型
-
-        Args:
-            data: DataFrame，训练数据
-
-        Returns:
-            tuple: (是否成功, 消息)
         """
         try:
             # 检查数据量
             if len(data) < 50:
-                return False, "数据量不足，至少需要50条记录进行训练"
+                return False, "数据量不足，至少需要50条"
 
             # 1. 准备特征
             features = self.prepare_features(data)
@@ -210,12 +190,6 @@ class TrafficPredictor:
     def predict(self, data):
         """
         对新数据进行预测
-
-        Args:
-            data: DataFrame，要预测的数据
-
-        Returns:
-            tuple: (预测结果, 消息)
         """
         if not self.is_trained or self.model is None:
             return None, "请先训练模型"
@@ -251,12 +225,6 @@ class TrafficPredictor:
     def save_model(self, filepath):
         """
         保存模型到文件
-
-        Args:
-            filepath: 文件路径
-
-        Returns:
-            tuple: (是否成功, 消息)
         """
         try:
             if not self.is_trained:
@@ -282,12 +250,6 @@ class TrafficPredictor:
     def load_model(self, filepath):
         """
         从文件加载模型
-
-        Args:
-            filepath: 文件路径
-
-        Returns:
-            tuple: (是否成功, 消息)
         """
         try:
             with open(filepath, 'rb') as f:
@@ -374,98 +336,73 @@ class TrafficPredictor:
 # ==================== 测试函数 ====================
 
 def test_predictor():
-    """测试预测器"""
-    print("=== 测试 TrafficPredictor ===")
+    """测试一下这个预测器"""
+    print("开始测试 TrafficPredictor")
 
-    # 1. 创建预测器
+    # 创建预测器
     predictor = TrafficPredictor()
-    print("1. 创建预测器 ✓")
+    print("1. 预测器创建好了")
 
-    # 2. 生成测试数据
-    from data_manager import TrafficDataManager
-    manager = TrafficDataManager()
-    manager.generate_sample_data(200)
-    data = manager.display_data
+    # 生成一些测试数据（这里需要你的data_manager）
+    try:
+        from data_manager import TrafficDataManager
+        manager = TrafficDataManager()
+        manager.generate_sample_data(200)
+        data = manager.display_data
 
-    print(f"2. 生成测试数据 ({len(data)} 条记录) ✓")
+        print(f"2. 有 {len(data)} 条测试数据")
 
-    # 3. 训练模型
-    success, result = predictor.train_model(data)
+        # 训练模型
+        success, result = predictor.train_model(data)
 
-    if success:
-        print("3. 模型训练成功 ✓")
-        print(f"   准确率: {result['accuracy']:.2%}")
-        print(f"   使用特征: {len(predictor.feature_columns)} 个")
-        print(f"   训练集: {result['train_size']} 条")
-        print(f"   测试集: {result['test_size']} 条")
-
-        # 4. 特征重要性
-        importance_df = predictor.get_feature_importance()
-        if importance_df is not None:
-            print("\n4. 特征重要性:")
-            for idx, row in importance_df.head(5).iterrows():
-                print(f"   {row['feature']}: {row['importance']:.3f}")
-
-        # 5. 预测测试
-        test_predictions, test_probs, message = predictor.predict(data.head(10))
-        if test_predictions is not None:
-            print(f"\n5. 预测测试: {message} ✓")
-            print(f"   前10条记录的预测结果: {test_predictions}")
-
-            # 统计结果
-            unique, counts = np.unique(test_predictions, return_counts=True)
-            for level, count in zip(unique, counts):
-                risk_labels = ['低风险', '中风险', '高风险']
-                label = risk_labels[level] if level < 3 else f"等级{level}"
-                print(f"   {label}: {count} 条")
-
-        # 6. 单条预测测试
-        sample_input = {
-            '事故时间': '2024-01-01 08:30',
-            '所在区域': '朝阳区',
-            '事故类型': '追尾',
-            '受伤人数': 1,
-            '死亡人数': 0,
-            '温度(℃)': 25.5,
-            '湿度(%)': 65,
-            '能见度(km)': 10.5,
-            '风速(m/s)': 3.2
-        }
-
-        risk_label, prob_dict, msg = predictor.predict_single(sample_input)
-        print(f"\n6. 单条预测: {msg}")
-        if risk_label:
-            print(f"   预测结果: {risk_label}")
-            if prob_dict:
-                for risk, prob in prob_dict.items():
-                    print(f"   {risk}概率: {prob:.1%}")
-
-        # 7. 保存/加载测试
-        import tempfile
-        import os
-
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as tmp:
-            tmp_path = tmp.name
-
-        success, msg = predictor.save_model(tmp_path)
         if success:
-            print(f"\n7. {msg} ✓")
+            print("3. 模型训练成功")
+            print(f"   准确率: {result['accuracy']:.1%}")
+            print(f"   用了 {result['feature_count']} 个特征")
 
-            # 创建新预测器并加载模型
-            new_predictor = TrafficPredictor()
-            success, msg = new_predictor.load_model(tmp_path)
-            if success:
-                print(f"   加载模型: {msg} ✓")
-                print(f"   模型状态: {'已训练' if new_predictor.is_trained else '未训练'}")
+            # 看看哪些特征重要
+            importance = predictor.get_feature_importance()
+            if importance is not None:
+                print("\n4. 最重要的几个特征:")
+                for i, (_, row) in enumerate(importance.head(3).iterrows()):
+                    print(f"   {row['feature']}: {row['importance']:.3f}")
 
-        # 清理临时文件
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+            # 测试预测
+            test_data = data.head(5)
+            predictions, _, msg = predictor.predict(test_data)
 
-    else:
-        print(f"3. 模型训练失败: {result}")
+            if predictions is not None:
+                print(f"\n5. 预测测试: {msg}")
+                print(f"   前5条预测结果: {predictions}")
 
-    print("\n=== 测试完成 ===")
+            # 单条预测测试
+            sample = {
+                '事故时间': '2024-01-01 08:30',
+                '所在区域': '朝阳区',
+                '事故类型': '追尾',
+                '受伤人数': 1,
+                '死亡人数': 0,
+                '温度(℃)': 25.5,
+                '湿度(%)': 65,
+                '能见度(km)': 10.5,
+                '风速(m/s)': 3.2
+            }
+
+            risk, probs, msg = predictor.predict_single(sample)
+            print(f"\n6. 单条预测: {msg}")
+            if risk:
+                print(f"   风险等级: {risk}")
+                if probs:
+                    for level, prob in probs.items():
+                        print(f"   {level}: {prob:.1%}")
+
+        else:
+            print(f"3. 训练失败: {result}")
+
+    except Exception as e:
+        print(f"测试出错: {e}")
+
+    print("测试结束")
 
 
 if __name__ == "__main__":

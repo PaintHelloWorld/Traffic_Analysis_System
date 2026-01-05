@@ -1,28 +1,27 @@
-# main.py - 主程序入口（集成版）
+# main.py - 程序入口
 import tkinter as tk
 from data_manager import TrafficDataManager
 from ui_components import IntegratedMainWindow
 
 
 def main():
-    """主函数 - 启动应用程序"""
     root = tk.Tk()
     root.title("城市交通事故分析与预警系统")
-    root.geometry("1200x700")
+    root.state('zoomed')
+    root.geometry("1200x800")
 
-    # 设置应用程序图标（可选）
+    # TODO: 设计一个应用程序图标.ico
+    '''
     try:
         root.iconbitmap('traffic_icon.ico')
     except:
         pass
+    '''
 
     # 初始化数据管理器
     data_manager = TrafficDataManager()
 
-    # 创建主窗口
-    app = IntegratedMainWindow(root, data_manager)
-
-    # 启动程序
+    IntegratedMainWindow(root, data_manager)
     root.mainloop()
 
 
