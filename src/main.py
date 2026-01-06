@@ -10,14 +10,6 @@ def main():
     root.state('zoomed')
     root.geometry("1200x800")
 
-    # TODO: 设计一个应用程序图标.ico
-    '''
-    try:
-        root.iconbitmap('traffic_icon.ico')
-    except:
-        pass
-    '''
-
     # 初始化数据管理器
     data_manager = TrafficDataManager()
 

@@ -174,6 +174,66 @@ class TrafficDataManager:
         except Exception as e:
             return False, f"加载失败: {str(e)}"
 
+    # data_manager.py - 在 TrafficDataManager 类中添加
+
+    def load_excel(self, filepath):
+        """加载Excel文件"""
+        try:
+            # 1. 尝试不同的引擎读取Excel
+            try:
+                self.raw_data = pd.read_excel(filepath, engine='openpyxl')
+            except ImportError:
+                try:
+                    self.raw_data = pd.read_excel(filepath, engine='xlrd')
+                except ImportError:
+                    return False, "需要安装openpyxl或xlrd库，请运行: pip install openpyxl xlrd"
+            except Exception as e:
+                # 尝试其他引擎
+                try:
+                    self.raw_data = pd.read_excel(filepath, engine='odf')
+                except:
+                    try:
+                        # 尝试自动检测引擎
+                        self.raw_data = pd.read_excel(filepath)
+                    except Exception as e2:
+                        return False, f"读取Excel失败: {str(e2)}"
+
+            # 2. 验证文件格式
+            is_valid, validation_msg = self.validate_csv_structure(self.raw_data)
+
+            if not is_valid:
+                # 格式严重不匹配，不允许导入
+                self.raw_data = None
+                return False, validation_msg
+
+            # 3. 如果是警告信息，需要用户确认
+            if "警告" in validation_msg:
+                self.validation_warning = validation_msg
+            else:
+                self.validation_warning = None
+
+            # 4. 自动识别和转换数据类型
+            self.auto_detect_types()
+
+            # 5. 设置显示数据
+            self.display_data = self.raw_data.copy()
+            self.current_file = filepath
+
+            # 6. 重置筛选和排序状态
+            self.filters = {}
+            self.sort_column = None
+            self.sort_ascending = True
+
+            # 7. 返回成功消息
+            success_msg = f"成功加载Excel文件：{len(self.raw_data)} 条记录，{len(self.raw_data.columns)} 个字段"
+            if self.validation_warning:
+                success_msg += f"\n\n警告：{self.validation_warning}"
+
+            return True, success_msg
+
+        except Exception as e:
+            return False, f"加载Excel失败: {str(e)}"
+
     def auto_detect_types(self):
         """自动识别和转换数据类型"""
         if self.raw_data is None:

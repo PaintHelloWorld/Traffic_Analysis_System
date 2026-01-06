@@ -91,6 +91,7 @@ class ControlPanel(ttk.LabelFrame):
 
         self.setup_controls()
 
+    # ui_components.py - 修改 setup_controls 方法中的按钮部分
     def setup_controls(self):
         """设置控制组件"""
         # 文件操作按钮
@@ -98,13 +99,15 @@ class ControlPanel(ttk.LabelFrame):
         file_frame.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Button(file_frame, text="导入CSV", command=self.open_csv).pack(side=tk.LEFT, padx=2)
+        ttk.Button(file_frame, text="导入Excel", command=self.open_excel).pack(side=tk.LEFT, padx=2)
         ttk.Button(file_frame, text="导出CSV", command=self.save_csv).pack(side=tk.LEFT, padx=2)
         ttk.Button(file_frame, text="导出Excel", command=self.export_excel).pack(side=tk.LEFT, padx=2)
-        ttk.Button(file_frame, text="生成示例", command=self.generate_sample).pack(side=tk.LEFT, padx=2)
-        # 分隔线
+        ttk.Button(file_frame, text="示例数据", command=self.generate_sample).pack(side=tk.LEFT, padx=2)
+
+        # 确保这行代码存在且正确
         ttk.Separator(self, orient='horizontal').pack(fill=tk.X, pady=10)
 
-        # 筛选控制
+        # 筛选控制 - 确保这个框架被正确创建和打包
         filter_frame = ttk.Frame(self)
         filter_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -169,15 +172,26 @@ class ControlPanel(ttk.LabelFrame):
 
     # ui_components.py - 修改 open_csv 函数
 
+    # ui_components.py - 修改 open_csv 函数
     def open_csv(self):
-        """打开CSV文件"""
+        """打开数据文件（支持CSV和Excel）"""
         filepath = filedialog.askopenfilename(
-            title="选择CSV文件",
-            filetypes=[("CSV文件", "*.csv"), ("所有文件", "*.*")]
+            title="选择数据文件",
+            filetypes=[
+                ("CSV文件", "*.csv"),
+                ("Excel文件", "*.xlsx *.xls"),
+                ("所有文件", "*.*")
+            ]
         )
 
         if filepath:
-            success, message = self.data_manager.load_csv(filepath)
+            # 根据文件扩展名选择加载方法
+            file_ext = filepath.lower().split('.')[-1]
+
+            if file_ext in ['xlsx', 'xls']:
+                success, message = self.data_manager.load_excel(filepath)
+            else:
+                success, message = self.data_manager.load_csv(filepath)
 
             if success:
                 # 检查是否有警告信息
@@ -196,7 +210,7 @@ class ControlPanel(ttk.LabelFrame):
                         self.status_callback("导入已取消")
                         return
 
-                # ============ 新增：数据量检查 ============
+                # 数据量检查
                 data_size = len(self.data_manager.display_data)
                 if data_size > 100:
                     response = messagebox.askyesno(
@@ -213,7 +227,6 @@ class ControlPanel(ttk.LabelFrame):
                         self.data_manager.current_file = None
                         self.status_callback("导入已取消")
                         return
-                # ============ 新增结束 ============
 
                 self.refresh_table()
                 self.update_column_options()
@@ -222,6 +235,67 @@ class ControlPanel(ttk.LabelFrame):
                 messagebox.showerror(
                     "文件格式错误",
                     f"无法导入文件:\n\n{message}"
+                )
+
+            self.status_callback(message)
+
+    # ui_components.py - 在 ControlPanel 类中添加 open_excel 方法
+    def open_excel(self):
+        """打开Excel文件"""
+        filepath = filedialog.askopenfilename(
+            title="选择Excel文件",
+            filetypes=[
+                ("Excel文件", "*.xlsx *.xls"),
+                ("所有文件", "*.*")
+            ]
+        )
+
+        if filepath:
+            success, message = self.data_manager.load_excel(filepath)
+
+            if success:
+                # 检查是否有警告信息
+                if hasattr(self.data_manager, 'validation_warning') and self.data_manager.validation_warning:
+                    # 显示警告对话框，让用户选择是否继续
+                    response = messagebox.askyesno(
+                        "数据格式警告",
+                        f"{self.data_manager.validation_warning}\n\n是否继续导入？"
+                    )
+
+                    if not response:
+                        # 用户选择不继续，重置数据管理器
+                        self.data_manager.raw_data = None
+                        self.data_manager.display_data = None
+                        self.data_manager.current_file = None
+                        self.status_callback("导入已取消")
+                        return
+
+                # ============ 数据量检查 ============
+                data_size = len(self.data_manager.display_data)
+                if data_size > 100:
+                    response = messagebox.askyesno(
+                        "数据量警告",
+                        f"加载了 {data_size} 条数据。\n\n"
+                        f"数据量超过100条，使用可视化功能可能导致程序卡顿\n"
+                        f"是否继续导入？"
+                    )
+
+                    if not response:
+                        # 用户选择不继续，重置数据管理器
+                        self.data_manager.raw_data = None
+                        self.data_manager.display_data = None
+                        self.data_manager.current_file = None
+                        self.status_callback("导入已取消")
+                        return
+                # ============ 数据量检查结束 ============
+
+                self.refresh_table()
+                self.update_column_options()
+            else:
+                # 显示错误消息框
+                messagebox.showerror(
+                    "文件格式错误",
+                    f"无法导入Excel文件:\n\n{message}"
                 )
 
             self.status_callback(message)
@@ -931,7 +1005,6 @@ class IntegratedMainWindow:
 
 技术支持
 --------
-如需技术支持或反馈建议，请联系系统管理员lfw。
 Github仓库地址：https://github.com/PaintHelloWorld/Traffic_Analysis_System
 © 2026 交通数据分析项目 - 版本 1.2.1
         """
