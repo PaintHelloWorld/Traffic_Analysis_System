@@ -1,4 +1,38 @@
 # data_manager.py - 数据管理核心
+"""
+数据管理核心模块 - TrafficDataManager
+======================================
+
+核心功能：
+    1. 数据导入：支持CSV/Excel文件，自动检测编码和格式
+    2. 数据验证：检查必需字段，验证数据类型
+    3. 数据操作：筛选、排序、搜索、增删改查
+    4. 数据导出：保存为CSV/Excel格式
+    5. 示例生成：生成带逻辑关联的模拟数据
+
+关键设计：
+    1. 双重数据存储：
+        - raw_data: 原始数据（只读基准）
+        - display_data: 显示数据（筛选排序后）
+    2. 状态管理：
+        - filters: 当前筛选条件字典
+        - sort_column/sort_ascending: 排序状态
+    3. 格式兼容：
+        - 自动识别utf-8/gbk编码
+        - 模糊匹配字段名（如"事故时间"匹配"AccidentTime"）
+
+学习要点：
+    1. 学会了pandas的基本数据操作（read_csv, groupby, sort_values）
+    2. 理解了异常处理的重要性（try-except处理文件错误）
+    3. 掌握了数据验证的基本方法（检查字段、类型、范围）
+    4. 体验了数据模拟的设计思路（因素关联、权重设置）
+
+注意事项：
+    1. 必需字段：事故时间、所在区域、事故类型、受伤人数、死亡人数
+    2. 数据量警告：超过100条会有性能提示
+    3. 内存管理：大数据集时注意筛选减少数据量
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -19,7 +53,6 @@ class TrafficDataManager:
         self.sort_column = None  # 当前排序列
         self.sort_ascending = True  # 排序方向
 
-    # 在 TrafficDataManager 类的 __init__ 方法后添加
     EXPECTED_FIELDS = {
         'required': ['事故时间', '所在区域', '事故类型', '受伤人数', '死亡人数'],
         'optional': ['温度(℃)', '湿度(%)', '能见度(km)', '风速(m/s)', '事故等级', '道路名称', '天气情况', '道路类型',
@@ -115,14 +148,13 @@ class TrafficDataManager:
             is_valid, validation_msg = self.validate_csv_structure(self.raw_data)
 
             if not is_valid:
-                # 格式严重不匹配，不允许导入
+                # 格式不匹配，不允许导入
                 self.raw_data = None
                 return False, validation_msg
 
             # 3. 如果是警告信息，需要用户确认
             if "警告" in validation_msg:
                 # 这里需要在UI层显示确认对话框
-                # 暂时记录为需要用户确认
                 self.validation_warning = validation_msg
             else:
                 self.validation_warning = None
@@ -130,7 +162,7 @@ class TrafficDataManager:
             # 4. 自动识别和转换数据类型
             self.auto_detect_types()
 
-            # 5. 设置显示数据（初始为原始数据副本）
+            # 5. 设置显示数据，所以复制一个raw_data
             self.display_data = self.raw_data.copy()
             self.current_file = filepath
 
@@ -171,32 +203,21 @@ class TrafficDataManager:
             except Exception as e2:
                 return False, f"加载失败: 无法识别的文件编码或格式\n错误详情: {e2}"
 
-        except Exception as e:
+        except Exception as e: #想不到，但可能存在的异常
             return False, f"加载失败: {str(e)}"
 
-    # data_manager.py - 在 TrafficDataManager 类中添加
 
     def load_excel(self, filepath):
         """加载Excel文件"""
         try:
-            # 1. 尝试不同的引擎读取Excel
+            # 1. 尝试不同的引擎读取Excel。嵌套两层try-except。
             try:
                 self.raw_data = pd.read_excel(filepath, engine='openpyxl')
             except ImportError:
                 try:
                     self.raw_data = pd.read_excel(filepath, engine='xlrd')
                 except ImportError:
-                    return False, "需要安装openpyxl或xlrd库，请运行: pip install openpyxl xlrd"
-            except Exception as e:
-                # 尝试其他引擎
-                try:
-                    self.raw_data = pd.read_excel(filepath, engine='odf')
-                except:
-                    try:
-                        # 尝试自动检测引擎
-                        self.raw_data = pd.read_excel(filepath)
-                    except Exception as e2:
-                        return False, f"读取Excel失败: {str(e2)}"
+                    return False, "需要安装openpyxl或xlrd库，请运行: pip install openpyxl或pip install xlrd"
 
             # 2. 验证文件格式
             is_valid, validation_msg = self.validate_csv_structure(self.raw_data)
@@ -300,7 +321,6 @@ class TrafficDataManager:
             type_dict = {}
             for col in self.display_data.columns:
                 dtype = self.display_data[col].dtype
-                # 简化类型显示
                 if pd.api.types.is_datetime64_any_dtype(dtype):
                     type_dict[col] = '日期时间'
                 elif pd.api.types.is_numeric_dtype(dtype):
@@ -443,7 +463,7 @@ class TrafficDataManager:
             return True, f"已按 {column} {'升序' if ascending else '降序'} 排序"
 
         except Exception as e:
-            return False, f"排序失败: {str(e)}"
+            return False, f"排序失败: {e}"
 
     # ==================== 数据搜索功能 ====================
 
@@ -559,11 +579,30 @@ class TrafficDataManager:
         except Exception as e:
             return False, f"导出失败: {str(e)}"
 
-    # ==================== 示例数据生成 ====================
-    # TODO: 让生成的数据变得更合理
+    # ==================== 示例数据生成。这个是在系统里会被使用的函数，和生成10000行数据的代码作用不同====================
 
     def generate_sample_data(self, n=100):
-        """生成示例数据（用于测试）"""
+        """生成示例数据，方便项目演示及用户使用
+        这个函数，在1.0.0里，是生成完全随机的数据，但那样就无法喂给机器学习模型了。
+        所以在1.1.0，我给它增加了相关性。结果，直接过拟合。
+        所以最后我在提高相关性的同时，增加了噪声。
+        在np.random.seed(42)下，这份数据训练的模型有80%准确度。
+        one-hot可以后续实现。现在由于开发时间限制，暂时采用最基本的Label Encoding编码方式。
+        -----------------------------------------------------------
+        我承认目前存在的问题：
+        1. 没有区分有序/无序变量：所有文本列都统一处理；
+        2. 编码信息丢失：没有保存映射关系
+        -----------------------------------------------------------
+        好在：
+        决策树/随机森林对编码不那么敏感；
+        而且我采用了混合策略：
+        # 第一优先级：手工指定的重要特征
+        # 第二优先级：数据中的分类变量（最多取3个）
+        # 第三优先级：所有数值列（最多取8个）
+        这样可以保持最基本的鲁棒性。
+        """
+        # TODO: 采用one-hot编码。
+
         np.random.seed(42)
 
         # 生成时间数据
@@ -594,7 +633,7 @@ class TrafficDataManager:
         # 生成气象数据 - 加强相关性
         temperature = np.random.uniform(-5, 35, n).round(1)
 
-        # 温度与湿度的负相关（但加入噪声）
+        # 温度与湿度的负相关（但加入噪声，防止模型过拟合）
         humidity_base = 75 - 0.7 * temperature + np.random.normal(0, 8, n)
         humidity = np.clip(humidity_base.round(0), 30, 95)
 
@@ -745,7 +784,7 @@ class TrafficDataManager:
 
         return True, f"已生成 {n} 条示例数据"
 
-
+'''
 # ==================== 测试函数 ====================
 
 def test_data_manager():
@@ -790,3 +829,4 @@ def test_data_manager():
 
 if __name__ == "__main__":
     test_data_manager()
+'''

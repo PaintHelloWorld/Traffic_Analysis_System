@@ -1,4 +1,39 @@
 # predictor.py - 事故预测模型
+"""
+机器学习预测模块 - TrafficPredictor
+====================================
+
+模型介绍：
+    使用随机森林(RandomForest)算法预测交通事故风险等级
+    风险等级：0=低风险, 1=中风险, 2=高风险
+
+特征工程：
+    1. 时间特征提取：从时间字段提取小时、星期、月份等
+    2. 分类变量编码：区域、事故类型等转为数值
+    3. 特征选择：自动选择数值列和重要分类列
+
+模型流程：
+    1. 数据准备 → 2. 特征提取 → 3. 训练测试分割 →
+    4. 数据标准化 → 5. 模型训练 → 6. 评估预测
+
+关键技术点：
+    1. 特征缩放：StandardScaler标准化，提高模型收敛速度
+    2. 分层抽样：train_test_split的stratify参数保持类别平衡
+    3. 模型保存：使用pickle持久化，方便复用
+    4. 概率输出：predict_proba提供风险概率分布
+
+学习收获：
+    1. 理解了机器学习的基本流程（特征-模型-评估）
+    2. 学会了sklearn的基本使用方法
+    3. 认识到特征工程的重要性
+    4. 了解了模型评估指标（准确率、混淆矩阵）
+
+模型限制：
+    1. 数据量要求：至少50条记录才能训练
+    2. 特征依赖：需要包含基本的事故信息字段
+    3. 预测解释：可提供概率但不能解释具体原因
+"""
+
 import pandas as pd
 import numpy as np
 import pickle
@@ -343,7 +378,7 @@ def test_predictor():
     predictor = TrafficPredictor()
     print("1. 预测器创建好了")
 
-    # 生成一些测试数据（这里需要你的data_manager）
+    # 生成一些测试数据
     try:
         from data_manager import TrafficDataManager
         manager = TrafficDataManager()

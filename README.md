@@ -64,7 +64,7 @@ python main.py
 
 启动后，您将看到如下主界面：
 
-![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 145344.png)
+![image-20260105161258266](C:\Users\admin\AppData\Roaming\Typora\typora-user-images\image-20260105161258266.png)
 
 > 主界面包含四个选项卡：**数据管理、可视化分析、风险预测、使用帮助**。
 
@@ -86,7 +86,7 @@ python main.py
 
 | 数据管理                                                     | 可视化分析                                                   | 风险预测                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| ![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 145754.png) | ![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 145535.png) | ![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 145625.png) |
+| ![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 161048.png) | ![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 145535.png) | ![](C:\Users\admin\Pictures\Screenshots\屏幕截图 2026-01-05 145625.png) |
 
 ---
 

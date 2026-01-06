@@ -1,4 +1,50 @@
 # ui_components.py - 界面组件
+# 帮助内容字符串在第1000行附近
+"""
+用户界面组件模块 - UI Components
+=================================
+
+组件构成：
+    1. DataTable - 数据表格显示组件（基于ttk.Treeview）
+    2. ControlPanel - 控制面板（筛选、搜索、排序按钮）
+    3. InfoPanel - 信息显示面板（数据统计信息）
+    4. IntegratedMainWindow - 集成主窗口（标签页管理）
+
+界面布局：
+    ├── 数据管理页 (📊)
+    │   ├── 左侧：信息面板（数据统计）
+    │   └── 右侧：数据表格 + 控制面板
+    │
+    ├── 可视化页 (📈)
+    │   ├── 上部：图表控制面板
+    │   └── 下部：图表显示区域
+    │
+    ├── 风险预测页 (⚠️)
+    │   ├── 模型训练区
+    │   ├── 单条预测区（左侧）
+    │   └── 批量预测区（右侧）
+    │
+    └── 使用帮助页 (❓)
+        └── 帮助文档显示
+
+交互逻辑：
+    1. 事件驱动：按钮点击触发对应功能
+    2. 状态同步：数据变化时更新所有相关组件
+    3. 错误提示：操作失败时弹出友好提示
+    4. 进度反馈：状态栏实时显示操作结果
+
+开发体会：
+    1. 理解了GUI编程的事件驱动模型
+    2. 学会了tkinter组件的使用和布局
+    3. 体验了用户界面设计的基本原则
+    4. 掌握了多模块协同的界面整合
+
+界面限制：
+    1. 不支持多窗口同时操作
+    2. 大数据集时界面响应会变慢
+    3. 图表预览需要一定加载时间
+"""
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import pandas as pd
@@ -87,11 +133,10 @@ class ControlPanel(ttk.LabelFrame):
         super().__init__(parent, text="控制面板", padding=10)
         self.data_manager = data_manager
         self.table = table
-        self.status_callback = status_callback  # 状态更新回调函数
+        self.status_callback = status_callback
 
         self.setup_controls()
 
-    # ui_components.py - 修改 setup_controls 方法中的按钮部分
     def setup_controls(self):
         """设置控制组件"""
         # 文件操作按钮
@@ -168,18 +213,14 @@ class ControlPanel(ttk.LabelFrame):
             self.filter_column.current(0)
             self.sort_column.current(0)
 
-    # 修改 ui_components.py 的 open_csv 函数
 
-    # ui_components.py - 修改 open_csv 函数
-
-    # ui_components.py - 修改 open_csv 函数
     def open_csv(self):
-        """打开数据文件（支持CSV和Excel）"""
+        """打开数据文件（支持CSV）"""
         filepath = filedialog.askopenfilename(
             title="选择数据文件",
             filetypes=[
                 ("CSV文件", "*.csv"),
-                ("Excel文件", "*.xlsx *.xls"),
+              #  ("Excel文件", "*.xlsx *.xls"),
                 ("所有文件", "*.*")
             ]
         )
@@ -485,7 +526,7 @@ class InfoPanel(ttk.LabelFrame):
 
 
 class IntegratedMainWindow:
-    """集成版主窗口 - 简化版，只有选项卡"""
+    """集成版主窗口 """
 
     def __init__(self, root, data_manager):
         self.root = root
@@ -1043,7 +1084,7 @@ Github仓库地址：https://github.com/PaintHelloWorld/Traffic_Analysis_System
         """训练预测模型"""
         if self.data_manager.display_data is None:
             self.update_status("请先加载数据")
-            tk.messagebox.showwarning("无数据", "请先加载数据")
+            tk.messagebox.showwarning("无数据", "请先导入数据")
             return
 
         predictor = self.init_predictor()
@@ -1286,7 +1327,7 @@ Github仓库地址：https://github.com/PaintHelloWorld/Traffic_Analysis_System
 
 
 
-
+'''
 # ==================== 测试函数 ====================
 
 def test_integrated_ui():
@@ -1318,3 +1359,4 @@ def test_integrated_ui():
 
 if __name__ == "__main__":
     test_integrated_ui()
+'''

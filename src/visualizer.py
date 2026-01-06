@@ -1,8 +1,36 @@
-# visualizer.py - 数据可视化模块（集成版）
+# visualizer.py - 数据可视化模块
+"""
+数据可视化模块 - TrafficVisualizer
+===================================
+
+图表支持：
+    1. 柱状图 - 分类数据对比
+    2. 折线图 - 趋势分析
+    3. 饼图 - 比例分布
+    4. 散点图 - 相关性分析
+    5. 热力图 - 特征相关性
+    6. 箱线图 - 数据分布
+
+技术实现：
+    1. 图表嵌入：FigureCanvasTkAgg将matplotlib嵌入tkinter
+    2. 动态切换：根据数据类型智能推荐图表类型
+    3. 工具栏：集成matplotlib导航工具栏（缩放、保存）
+    4. 导出功能：支持PNG、JPG、PDF、SVG格式
+
+设计特点：
+    1. 智能适配：饼图自动禁用Y轴选择
+    2. 性能优化：大数据集时限制显示项数
+    3. 用户友好：清晰的坐标轴标签和图例
+    4. 中文支持：配置中文字体避免乱码
+"""
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+#选择FigureCanvasTkAgg的原因：在初版代码中，我使用了plt.show()
+#结果会弹独立窗口，破坏UI统一性
+#我向ai寻求帮助，找到了解决方案
 from matplotlib.figure import Figure
 import seaborn as sns
 import pandas as pd
@@ -14,7 +42,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 
 class TrafficVisualizer:
-    """交通事故可视化器 - 集成版"""
+    """交通事故可视化器 """
 
     def __init__(self, data_manager, parent_frame):
         """
@@ -23,6 +51,8 @@ class TrafficVisualizer:
         Args:
             data_manager: TrafficDataManager实例
             parent_frame: 父框架（用于显示图表）
+        Returns:
+            无。。。
         """
         self.data_manager = data_manager
         self.parent_frame = parent_frame
@@ -508,11 +538,11 @@ def create_visualization_tab(notebook, data_manager):
     notebook.add(viz_frame, text="📈 可视化分析")
 
     # 创建可视化器
-    visualizer = TrafficVisualizer(data_manager, viz_frame)
+    TrafficVisualizer(data_manager, viz_frame)
 
     return viz_frame
 
-
+'''
 # ==================== 测试函数 ====================
 
 def test_integrated_visualizer():
@@ -537,7 +567,7 @@ def test_integrated_visualizer():
     notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     # 创建可视化选项卡
-    viz_tab = create_visualization_tab(notebook, manager)
+    create_visualization_tab(notebook, manager)
 
     # 添加一个简单的数据选项卡作为对比
     data_tab = ttk.Frame(notebook)
@@ -555,3 +585,4 @@ def test_integrated_visualizer():
 
 if __name__ == "__main__":
     test_integrated_visualizer()
+'''
