@@ -70,18 +70,6 @@ python main.py
 
 ---
 
-## 📖 详细使用说明
-
-请参阅 [操作指南文档](城市交通事故分析与预警系统%20-%20操作指南.md) 获取完整功能说明，包括：
-
-- 数据导入、筛选、导出操作
-- 图表类型选择与生成
-- 模型训练与单条/批量预测
-- 模型保存与加载
-- 常见问题解答
-
----
-
 ## 📊 功能截图示例
 
 | 数据管理                                                     | 可视化分析                                                   | 风险预测                                                     |
@@ -119,5 +107,4 @@ python main.py
 
 - 📧 邮箱：lfwchemistry520@163.com
 - 🌐 项目仓库：[GitHub - Traffic_Analysis_System](https://github.com/PaintHelloWorld/Traffic_Analysis_System)
-
 
