@@ -583,25 +583,11 @@ class TrafficDataManager:
 
     def generate_sample_data(self, n=100):
         """生成示例数据，方便项目演示及用户使用
-        这个函数，在1.0.0里，是生成完全随机的数据，但那样就无法喂给机器学习模型了。
-        所以在1.1.0，我给它增加了相关性。结果，直接过拟合。
+        这个函数，在1.0.0里，是生成完全随机的数据，但那样就无法喂给模型了。
+        所以在1.1.0，我给它增加了相关性。结果，模型直接“背公式”。
         所以最后我在提高相关性的同时，增加了噪声。
         在np.random.seed(42)下，这份数据训练的模型有80%准确度。
-        one-hot可以后续实现。现在由于开发时间限制，暂时采用最基本的Label Encoding编码方式。
-        -----------------------------------------------------------
-        我承认目前存在的问题：
-        1. 没有区分有序/无序变量：所有文本列都统一处理；
-        2. 编码信息丢失：没有保存映射关系
-        -----------------------------------------------------------
-        好在：
-        决策树/随机森林对编码不那么敏感；
-        而且我采用了混合策略：
-        # 第一优先级：手工指定的重要特征
-        # 第二优先级：数据中的分类变量（最多取3个）
-        # 第三优先级：所有数值列（最多取8个）
-        这样可以保持最基本的鲁棒性。
         """
-        # TODO: 采用one-hot编码。
 
         np.random.seed(42)
 
@@ -783,50 +769,3 @@ class TrafficDataManager:
         self.current_file = None
 
         return True, f"已生成 {n} 条示例数据"
-
-'''
-# ==================== 测试函数 ====================
-
-def test_data_manager():
-    """测试数据管理器功能"""
-    print("=== 测试 TrafficDataManager ===")
-
-    # 1. 创建管理器
-    manager = TrafficDataManager()
-    print("1. 创建数据管理器 ✓")
-
-    # 2. 生成示例数据
-    success, message = manager.generate_sample_data(50)
-    print(f"2. {message} ✓")
-
-    # 3. 获取基本信息
-    print(f"3. 总记录数: {len(manager.display_data)}")
-    print(f"   总列数: {len(manager.get_column_names())}")
-    print(f"   列名: {manager.get_column_names()}")
-
-    # 4. 数据预览
-    preview = manager.get_data_preview(3)
-    print(f"4. 数据预览:\n{preview}")
-
-    # 5. 统计信息
-    stats = manager.get_basic_stats()
-    print(f"5. 统计信息 - 总记录: {stats['total_records']}")
-
-    # 6. 筛选测试
-    success, message = manager.apply_filter('所在区域', ['朝阳区', '海淀区'])
-    print(f"6. {message} ✓")
-
-    # 7. 排序测试
-    success, message = manager.sort_data('事故时间', ascending=False)
-    print(f"7. {message} ✓")
-
-    # 8. 搜索测试
-    results, message = manager.search_data('追尾')
-    print(f"8. {message} ✓")
-
-    print("=== 所有测试完成 ===")
-
-
-if __name__ == "__main__":
-    test_data_manager()
-'''
